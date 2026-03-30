@@ -27,7 +27,7 @@ const MOVE_TEMPLATE = `module {MODULE_NAME}::{MODULE_NAME} {
             ctx
         );
         transfer::public_transfer(treasury, ctx.sender());
-        transfer::public_freeze_object(metadata);
+        transfer::public_transfer(metadata, ctx.sender());
     }
 }
 `
