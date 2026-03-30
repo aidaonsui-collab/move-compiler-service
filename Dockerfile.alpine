@@ -1,0 +1,22 @@
+FROM alpine:3.19
+
+# Install Node.js and dependencies
+RUN apk add --no-cache nodejs npm curl ca-certificates bash
+
+# Download and install pre-built Sui CLI binary
+RUN curl -LO https://github.com/MystenLabs/sui/releases/download/mainnet-v1.68.1/sui-mainnet-v1.68.1-ubuntu-x86_64.tgz \
+    && tar -xzf sui-mainnet-v1.68.1-ubuntu-x86_64.tgz \
+    && mv sui-mainnet-v1.68.1-ubuntu-x86_64/sui /usr/local/bin/sui \
+    && chmod +x /usr/local/bin/sui \
+    && rm -rf sui-mainnet-v1.68.1-ubuntu-x86_64* \
+    && sui --version
+
+# Set up app
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production
+COPY server.js ./
+
+EXPOSE 3001
+
+CMD ["node", "server.js"]
