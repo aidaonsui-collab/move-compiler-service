@@ -1,28 +1,14 @@
-FROM ubuntu:22.04
+# Use official Sui image as builder to get the binary
+FROM mysten/sui-tools:mainnet AS sui-builder
 
-# Set PATH to include /usr/local/bin
-ENV PATH="/usr/local/bin:${PATH}"
+# Main application image
+FROM node:18-slim
 
-# Install Node.js 18 and dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    ca-certificates \
-    gnupg \
-    wget \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update \
-    && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/*
+# Copy Sui binary from builder
+COPY --from=sui-builder /usr/local/bin/sui /usr/local/bin/sui
 
-# Download pre-built Sui CLI
-RUN wget -q https://github.com/MystenLabs/sui/releases/download/mainnet-v1.68.1/sui-mainnet-v1.68.1-ubuntu-x86_64.tgz -O /tmp/sui.tgz \
-    && tar -xzf /tmp/sui.tgz -C /tmp \
-    && mv /tmp/sui-mainnet-v1.68.1-ubuntu-x86_64/sui /usr/local/bin/sui \
-    && chmod +x /usr/local/bin/sui \
-    && rm -rf /tmp/sui* \
-    && /usr/local/bin/sui --version
+# Verify Sui installation
+RUN sui --version
 
 # Set up app
 WORKDIR /app
