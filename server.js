@@ -1,0 +1,137 @@
+const express = require('express')
+const cors = require('cors')
+const { execSync } = require('child_process')
+const { mkdtempSync, writeFileSync, readFileSync, rmSync } = require('fs')
+const { join } = require('path')
+const { tmpdir } = require('os')
+
+const app = express()
+const PORT = process.env.PORT || 3001
+
+app.use(cors())
+app.use(express.json())
+
+const MOVE_TEMPLATE = `module {MODULE_NAME}::{MODULE_NAME} {
+    use sui::coin;
+    use sui::transfer;
+    use sui::tx_context::{Self, TxContext};
+    use sui::url;
+    use std::option;
+
+    struct {STRUCT_NAME} has drop {}
+
+    fun init(witness: {STRUCT_NAME}, ctx: &mut TxContext) {
+        let (treasury, metadata) = coin::create_currency(
+            witness,
+            6,
+            b"{STRUCT_NAME}",
+            b"Token Name",
+            b"",
+            option::some(url::new_unsafe_from_bytes(b"https://example.com")),
+            ctx
+        );
+        transfer::public_transfer(treasury, tx_context::sender(ctx));
+        transfer::public_transfer(metadata, tx_context::sender(ctx));
+    }
+}
+`
+
+const MOVE_TOML_TEMPLATE = `[package]
+name = "{MODULE_NAME}"
+version = "0.0.1"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet" }
+
+[addresses]
+{MODULE_NAME} = "0x0"
+`
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', sui: execSync('which sui').toString().trim() })
+})
+
+// Compile endpoint
+app.post('/compile', async (req, res) => {
+  const { symbol } = req.body
+  
+  if (!symbol || typeof symbol !== 'string') {
+    return res.status(400).json({ error: 'Invalid symbol' })
+  }
+  
+  console.log(`[${new Date().toISOString()}] Compiling symbol: ${symbol}`)
+  
+  const moduleName = symbol.toLowerCase()
+  const structName = symbol.toUpperCase()
+  
+  const workDir = mkdtempSync(join(tmpdir(), 'coin-compile-'))
+  const sourcesDir = join(workDir, 'sources')
+  
+  try {
+    // Create directories
+    execSync(`mkdir -p "${sourcesDir}"`)
+    
+    // Write Move.toml
+    const moveToml = MOVE_TOML_TEMPLATE.replace(/{MODULE_NAME}/g, moduleName)
+    writeFileSync(join(workDir, 'Move.toml'), moveToml)
+    
+    // Write source file
+    const source = MOVE_TEMPLATE
+      .replace(/{MODULE_NAME}/g, moduleName)
+      .replace(/{STRUCT_NAME}/g, structName)
+    writeFileSync(join(sourcesDir, `${moduleName}.move`), source)
+    
+    console.log(`  Generated source at: ${workDir}`)
+    
+    // Compile
+    const buildOutput = execSync('sui move build', {
+      cwd: workDir,
+      encoding: 'utf8',
+      timeout: 30000
+    })
+    
+    // Check for errors
+    if (buildOutput.includes('error[')) {
+      throw new Error(`Compilation failed:\n${buildOutput}`)
+    }
+    
+    console.log(`  Compilation successful`)
+    
+    // Read bytecode
+    const bytecodePath = join(workDir, 'build', moduleName, 'bytecode_modules', `${moduleName}.mv`)
+    const bytecodeBuffer = readFileSync(bytecodePath)
+    const bytecode = Array.from(bytecodeBuffer)
+    
+    console.log(`  Bytecode size: ${bytecode.length} bytes`)
+    
+    res.json({
+      success: true,
+      bytecode,
+      moduleName,
+      structName,
+      size: bytecode.length
+    })
+    
+  } catch (error) {
+    console.error(`  Compilation error:`, error.message)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
+    
+  } finally {
+    // Cleanup
+    try {
+      rmSync(workDir, { recursive: true, force: true })
+    } catch (e) {
+      console.warn('  Cleanup failed:', e.message)
+    }
+  }
+})
+
+app.listen(PORT, () => {
+  console.log(`Move Compiler Service running on port ${PORT}`)
+  console.log(`Health: http://localhost:${PORT}/health`)
+  console.log(`Compile: POST http://localhost:${PORT}/compile`)
+})
