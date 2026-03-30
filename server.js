@@ -13,12 +13,8 @@ app.use(express.json())
 
 const MOVE_TEMPLATE = `module {MODULE_NAME}::{MODULE_NAME} {
     use sui::coin;
-    use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
-    use sui::url;
-    use std::option;
 
-    struct {STRUCT_NAME} has drop {}
+    public struct {STRUCT_NAME} has drop {}
 
     fun init(witness: {STRUCT_NAME}, ctx: &mut TxContext) {
         let (treasury, metadata) = coin::create_currency(
@@ -27,11 +23,11 @@ const MOVE_TEMPLATE = `module {MODULE_NAME}::{MODULE_NAME} {
             b"{STRUCT_NAME}",
             b"Token Name",
             b"",
-            option::some(url::new_unsafe_from_bytes(b"https://example.com")),
+            option::none(),
             ctx
         );
-        transfer::public_transfer(treasury, tx_context::sender(ctx));
-        transfer::public_transfer(metadata, tx_context::sender(ctx));
+        transfer::public_transfer(treasury, ctx.sender());
+        transfer::public_transfer(metadata, ctx.sender());
     }
 }
 `
