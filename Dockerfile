@@ -1,24 +1,17 @@
 FROM node:18-slim
 
-# Install dependencies for building Sui
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     curl \
-    git \
-    build-essential \
-    pkg-config \
-    libssl-dev \
-    clang \
-    libclang-dev \
-    llvm \
-    cmake \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
-
-# Install Sui CLI
-RUN cargo install --locked --git https://github.com/MystenLabs/sui.git --branch mainnet sui
+# Download pre-built Sui CLI binary
+RUN curl -LO https://github.com/MystenLabs/sui/releases/download/mainnet-v1.68.1/sui-mainnet-v1.68.1-ubuntu-x86_64.tgz \
+    && tar -xzf sui-mainnet-v1.68.1-ubuntu-x86_64.tgz \
+    && mv sui-mainnet-v1.68.1-ubuntu-x86_64/sui /usr/local/bin/sui \
+    && chmod +x /usr/local/bin/sui \
+    && rm -rf sui-mainnet-v1.68.1-ubuntu-x86_64*
 
 # Set up app
 WORKDIR /app
