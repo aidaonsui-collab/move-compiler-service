@@ -58,3 +58,4 @@ Response:
 
 ### GET /health
 Returns service status and Sui CLI path.
+# Force rebuild Mon Mar 30 11:33:56 CDT 2026
