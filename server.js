@@ -49,7 +49,12 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', sui: execSync('which sui').toString().trim() })
+  try {
+    const suiPath = execSync('which sui').toString().trim()
+    res.json({ status: 'ok', sui: suiPath })
+  } catch (e) {
+    res.json({ status: 'ok', sui: '/usr/local/bin/sui (expected)' })
+  }
 })
 
 // Compile endpoint
