@@ -39,9 +39,7 @@ const MOVE_TEMPLATE = `module {MODULE_NAME}::{MODULE_NAME} {
 const MOVE_TOML_TEMPLATE = `[package]
 name = "{MODULE_NAME}"
 version = "0.0.1"
-
-[dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet" }
+edition = "2024.beta"
 
 [addresses]
 {MODULE_NAME} = "0x0"
