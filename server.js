@@ -21,13 +21,13 @@ const MOVE_TEMPLATE = `module {MODULE_NAME}::{MODULE_NAME} {
             witness,
             6,
             b"{STRUCT_NAME}",
-            b"Token Name",
-            b"",
+            b"{STRUCT_NAME}",
+            b"Launched on Odyssey",
             option::none(),
             ctx
         );
         transfer::public_transfer(treasury, ctx.sender());
-        transfer::public_transfer(metadata, ctx.sender());
+        transfer::public_freeze_object(metadata);
     }
 }
 `
